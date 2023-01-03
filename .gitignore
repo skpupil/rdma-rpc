@@ -1,0 +1,18 @@
+# editor
+/.vscode/*
+
+# build
+/build/*
+/bin/*
+
+# cache
+/.cache/*
+/.clangd/*
+
+# subproject
+/subprojects/*
+!/subprojects/*.wrap
+
+# protobuf
+pb
+protoc.zip
