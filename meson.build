@@ -65,6 +65,7 @@ subdir('src')
 if not get_option('as_subproject')
     subdir('app')
     subdir('bench')
+    subdir('farmem')
 endif
 
 # declare dependency
