@@ -16,8 +16,8 @@ auto main([[gnu::unused]] int argc, char *argv[]) -> int {
     for (int i = 0; i < 1000; i++) {
       request.set_greeting("hello from " + std::to_string(i));
       request.set_arg1(1);
-      request.set_arg2(1);
-      printf("send request: \"%s\"\n", request.greeting().c_str());
+      request.set_arg2(i);
+      printf("send request: \"%s %d %d\"\n", request.greeting().c_str(), request.arg1(), request.arg2());
       s = c.call(conn_id, 0, request, response);
       if (not s.ok()) {
         printf("%s\n", s.whatHappened());

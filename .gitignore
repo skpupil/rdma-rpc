@@ -4,6 +4,11 @@
 # build
 /build/*
 /bin/*
+/test_demo/test_functional/*.out
+/test_demo/rdma-lib/bin/*
+
+#ctag
+/test_demo/rdma-lib/tags
 
 # cache
 /.cache/*
