@@ -1,0 +1,10 @@
+syntax = "proto3";
+package echo;
+
+option optimize_for = LITE_RUNTIME;
+
+message Hello {
+  int64 addr = 1;
+  int32 arg1 = 2;
+  int32 arg2 = 3;
+}

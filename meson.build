@@ -66,6 +66,7 @@ if not get_option('as_subproject')
     subdir('app')
     subdir('bench')
     subdir('farmem')
+    subdir('fmemlib')
 endif
 
 # declare dependency
