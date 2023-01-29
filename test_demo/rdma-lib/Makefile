@@ -5,17 +5,19 @@ LDLIBS=-lrdmacm -libverbs #-lpci -lpthread
 INC = -I./include
 
 
-all: bin/client bin/server
+all: bin/client bin/server bin/test_general
 
 OBJS=src/rdma_common.o
 
-#libsrc = $(wildcard $(cur_path)/src/*.h)
+libsrc = $(wildcard ./src/*.cpp)
 
 
 
-bin/client: src/rdma_client.cpp src/rdma_common.cpp
+bin/client: app/rdma_client.cpp $(libsrc)
 	$(CXX) $^ -o $@ $(CXXFLAGS) $(LDLIBS) $(INC)
-bin/server: src/rdma_server.cpp src/rdma_common.cpp
+bin/server: app/rdma_server.cpp $(libsrc)
+	$(CXX) $^ -o $@ $(CXXFLAGS) $(LDLIBS) $(INC)
+bin/test_general: app/test_general.cpp $(libsrc)
 	$(CXX) $^ -o $@ $(CXXFLAGS) $(LDLIBS) $(INC)
 
 

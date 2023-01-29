@@ -296,7 +296,7 @@ static int send_server_metadata_to_client()
 	/* We need to setup requested memory buffer. This is where the client will 
 	* do RDMA READs and WRITEs. */
        server_buffer_mr = rdma_buffer_alloc(pd /* which protection domain */, 
-		       client_metadata_attr.length /* what size to allocate */, 
+		       1024,//client_metadata_attr.length /* what size to allocate */, 
 		       (enum ibv_access_flags)(IBV_ACCESS_LOCAL_WRITE|
 		       IBV_ACCESS_REMOTE_READ|
 		       IBV_ACCESS_REMOTE_WRITE) /* access permissions */);
@@ -312,8 +312,9 @@ static int send_server_metadata_to_client()
         * We need to prepare a send I/O operation that will tell the 
 	* client the address of the server buffer. 
 	*/
+       uint32_t len = 1024;
        server_metadata_attr.address = (uint64_t) server_buffer_mr->addr;
-       server_metadata_attr.length = (uint32_t) server_buffer_mr->length;
+       server_metadata_attr.length = len;//(uint32_t) server_buffer_mr->length;
        server_metadata_attr.stag.local_stag = (uint32_t) server_buffer_mr->lkey;
        server_metadata_mr = rdma_buffer_register(pd /* which protection domain*/, 
 		       &server_metadata_attr /* which memory to register */, 
