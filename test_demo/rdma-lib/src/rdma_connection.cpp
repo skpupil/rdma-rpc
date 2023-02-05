@@ -978,6 +978,60 @@
 		debug("Client side WRITE array is complete \n");
 		return 0;
 	}
+	int client_connection::rdma_write(const void* srcc, uint64_t r_addr, uint64_t length)
+	{
+		struct ibv_wc wc;
+		int ret = -1;
+
+		ibv_mr* local_array_src_mr = rdma_buffer_register(pd,
+				const_cast<void*>(srcc),
+				length,
+				(enum ibv_access_flags)(IBV_ACCESS_LOCAL_WRITE|
+					IBV_ACCESS_REMOTE_READ|
+					IBV_ACCESS_REMOTE_WRITE));
+		if(!local_array_src_mr){
+			rdma_error("Failed to register the local array src mr buffer in rdma_write, ret = %d \n", ret);
+			return ret;
+		}
+
+		/* Step 1: is to copy the local buffer into the remote buffer. We will
+		 * reuse the previous variables. */
+		/* now we fill up SGE */
+		client_send_sge.addr = (uint64_t)local_array_src_mr->addr;//(uint64_t) client_src_mr->addr;
+		client_send_sge.length = (uint32_t)local_array_src_mr->length;//(uint32_t) client_src_mr->length;
+		client_send_sge.lkey = local_array_src_mr->lkey;
+		/* now we link to the send work request */
+		bzero(&client_send_wr, sizeof(client_send_wr));
+		client_send_wr.sg_list = &client_send_sge;
+		client_send_wr.num_sge = 1;
+		client_send_wr.opcode = IBV_WR_RDMA_WRITE;
+		client_send_wr.send_flags = IBV_SEND_SIGNALED;
+		/* we have to tell server side info for RDMA */
+		client_send_wr.wr.rdma.rkey = server_metadata_attr.stag.remote_stag;
+		client_send_wr.wr.rdma.remote_addr = r_addr;//server_metadata_attr.address;
+		debug("before wrote: write to addr: %ld ", r_addr);
+		
+		/* Now we post it */
+		ret = ibv_post_send(client_qp,
+				&client_send_wr,
+				&bad_client_send_wr);
+		if (ret) {
+			rdma_error("Failed to write local array src buffer, errno: %d \n",
+					-errno);
+			return -errno;
+		}
+		/* at this point we are expecting 1 work completion for the write */
+		ret = process_work_completion_events(io_completion_channel,
+				&wc, 1);
+		if(ret != 1) {
+			rdma_error("We failed to get 1 work completions , ret = %d \n",
+					ret);
+			return ret;
+		}
+		rdma_buffer_deregister(local_array_src_mr);
+		debug("Client side WRITE rdma_write is complete \n");
+		return 0;
+	}
 
 
 	int client_connection::client_remote_memory_array_swap_in_ops(uint64_t* dstt, uint64_t r_addr, uint64_t length )
@@ -1033,6 +1087,62 @@
 		//printf("konglx: dst: %s\n",dst);
 		debug("Client side array READ is complete swap in \n");
 
+		return 0;
+	}
+	int client_connection::rdma_read(const void* dstt, uint64_t r_addr, uint64_t length )
+	{
+		struct ibv_wc wc;
+		int ret = -1;
+
+		//void* dst = const_cast<void*>(dstt);
+
+		ibv_mr* local_array_dst_mr = rdma_buffer_register(pd,
+				const_cast<void*>(dstt),
+				length,//strlen(src),
+				(enum ibv_access_flags)(IBV_ACCESS_LOCAL_WRITE |
+					IBV_ACCESS_REMOTE_WRITE |
+					IBV_ACCESS_REMOTE_READ));
+		if (!local_array_dst_mr) {
+			rdma_error("We failed to create the local array destination buffer in rdma_read, -ENOMEM\n");
+			return -ENOMEM;
+		}
+
+		/* Now we prepare a READ using same variables but for destination */
+		client_send_sge.addr = (uint64_t) local_array_dst_mr->addr;
+		client_send_sge.length = (uint32_t) local_array_dst_mr->length;
+		//printf("client_send_age.length: %d\n", (uint32_t)client_send_sge.length);
+		debug("konglx: client_send_sge.length: %ld\n", (long int)client_send_sge.length);
+		client_send_sge.lkey = local_array_dst_mr->lkey;
+		/* now we link to the send work request */
+		bzero(&client_send_wr, sizeof(client_send_wr));
+		client_send_wr.sg_list = &client_send_sge;
+		client_send_wr.num_sge = 1;
+		client_send_wr.opcode = IBV_WR_RDMA_READ;
+		client_send_wr.send_flags = IBV_SEND_SIGNALED;
+		/* we have to tell server side info for RDMA */
+		client_send_wr.wr.rdma.rkey = server_metadata_attr.stag.remote_stag;
+		char* addr = (char*)server_metadata_attr.address;
+		client_send_wr.wr.rdma.remote_addr =  r_addr;//server_metadata_attr.address ;
+		/* Now we post it */
+		ret = ibv_post_send(client_qp,
+				&client_send_wr,
+				&bad_client_send_wr);
+		if (ret) {
+			rdma_error("Failed to read client dst buffer from the master, errno: %d \n",
+					-errno);
+			return -errno;
+		}
+		/* at this point we are expecting 1 work completion for the write */
+		ret = process_work_completion_events(io_completion_channel,
+				&wc, 1);
+		if(ret != 1) {
+			rdma_error("We failed to get 1 work completions , ret = %d \n",
+					ret);
+			return ret;
+		}
+		//printf("konglx: dst: %s\n",dst);
+		debug("Client side rdma_read is complete \n");
+		rdma_buffer_deregister(local_array_dst_mr);
 		return 0;
 	}
 

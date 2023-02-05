@@ -86,9 +86,11 @@ public:
 	 int client_remote_memory_array_ops(); 
 
 	 int client_remote_memory_array_swap_out_ops(uint64_t* srcc, uint64_t r_addr, uint64_t length);
-
+	int rdma_write(const void* srcc, uint64_t r_addr, uint64_t length);
 
 	 int client_remote_memory_array_swap_in_ops(uint64_t* dstt, uint64_t r_addr, uint64_t length );
+
+	 int rdma_read(const void* dstt, uint64_t r_addr, uint64_t length );
 
 	struct ibv_mr* prepare_mr(struct ibv_pd* pd, char* buf, uint32_t len) ;
 
