@@ -41,7 +41,7 @@
 		src = dst = NULL;
 
 		//src = (char*)"abcduefghijk";
-		char* optarg = (char*)"abcdefghijkiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiii";
+		char* optarg = (char*)"abcdefghijkiiiii";
 		src = (char*)calloc(strlen(optarg) , 1);
 		if (!src) {
 			rdma_error("Failed to allocate memory : -ENOMEM\n");
@@ -304,7 +304,7 @@
 	{
 		struct ibv_wc wc[2];
 		int ret = -1;
-		debug("konglx: client_xchange_metadata_with_server src len: %ld %s\n", strlen(src), src);
+		debug("konglx: client_xchange_metadata_with_server src len: %ld \n", strlen(src));
 		
 		debug("pd  at %p \n", pd);
 		
@@ -323,7 +323,7 @@
 		client_metadata_attr.address = (uint64_t) client_src_mr->addr; 
 		//printf("konglingxin: client_metadata_attr.addr: %lld",(uint64_t)(client_metadata_attr.address));
 		debug("konglingxin: client_metadata_attr.addr: %lld\n",(long long int)(client_metadata_attr.address));
-		client_metadata_attr.length = 20 * 1024 * 1024;//client_src_mr->length; 
+		client_metadata_attr.length = 8*20 * 1024 * 1024;//client_src_mr->length; 
 		debug("we tell server to alloc %d bytes", client_metadata_attr.length);	
 		client_metadata_attr.stag.local_stag = client_src_mr->lkey;
 		/* now we register the metadata memory */
@@ -366,7 +366,7 @@
 		}
 		debug("slab begin to init: addr: %ld", server_metadata_attr.address);
 		Slab& slab = Slab::get_instance();
-		slab.init(server_metadata_attr.address, 100);
+		slab.init(server_metadata_attr.address, 20 * 1024 * 1024);
 		debug("Server sent us its buffer location and credentials, showing \n");
 		show_rdma_buffer_attr(&server_metadata_attr);
 		return 0;

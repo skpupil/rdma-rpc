@@ -76,7 +76,7 @@ private:
   uint64_t st_addr;
   uint64_t num_entry;
   iterator ele;
-  std::bitset<8 * 1024> bit_map;
+  std::bitset<16 * 1024 + 10> bit_map;
 public:
   // 构造、复制、移动、析构函数
   vector(client_connection* connection, uint64_t num_entrys) noexcept
@@ -179,11 +179,36 @@ public:
   {
     MYSTL_DEBUG(n < size());
     //return *(begin_ + n);
-    if(bit_map[n])
+    if(bit_map[n]){
     	return *(begin_ + n);
-    else 
+    }
+    else{
 	conn->rdma_read(ele, st_addr + n*sizeof(T), sizeof(T));
-    debug("in oprator [] read from remote\n");
+       *(begin_ + n) = *ele;
+	bit_map.set(n, 1);
+ 	if(bit_map.count() > num_entry ){
+		conn->rdma_read(ele, st_addr + n*sizeof(T), sizeof(T)); //bug
+	}	
+    } 
+    debug("in reference oprator [] read from remote\n");
+    return *ele;
+  }
+  reference get(size_type n)
+  {
+    MYSTL_DEBUG(n < size());
+    //return *(begin_ + n);
+    if(bit_map[n]){
+    	return *(begin_ + n);
+    }
+    else{
+	conn->rdma_read(ele, st_addr + n*sizeof(T), sizeof(T));
+       *(begin_ + n) = *ele;
+	bit_map.set(n, 1);
+ 	if(bit_map.count() > num_entry ){
+		conn->rdma_read(ele, st_addr + n*sizeof(T), sizeof(T)); //bug
+	}	
+    } 
+    debug("in reference oprator [] read from remote\n");
     return *ele;
   }
   const_reference operator[](size_type n) const
@@ -193,7 +218,7 @@ public:
         return *(begin_ + n);
     else 
 	conn->rdma_read(ele, st_addr + n*sizeof(T), sizeof(T));
-    debug("in oprator [] read from remote\n");
+    debug("in const reference oprator [] read from remote\n");
     return *ele;
   }
   reference at(size_type n)
@@ -489,7 +514,7 @@ void vector<T>::push_back(const value_type& value)
     }else{
         conn->rdma_write(&value, st_addr + (end_ - begin_) * sizeof(T), sizeof(T));
 	bit_map.set(index, 0); 
-	debug("push back at remote\n\n\n\n\n");
+	debug("push back at remote\n\n\n");
     }
     ++end_;
   }
@@ -597,14 +622,15 @@ void vector<T>::swap(vector<T>& rhs) noexcept
 template <class T>
 void vector<T>::try_init() noexcept
 {
+  debug("try_init alloc memory \n\n\n");
   try
   {
-    begin_ = data_allocator::allocate(16);
+    begin_ = data_allocator::allocate(16 * 1024);
     
     Slab& slab = Slab::get_instance(); 
-    st_addr = slab.get_mem(16 * sizeof( T ));
+    st_addr = slab.get_mem(16 * 1024 * sizeof( T ));
     end_ = begin_;
-    cap_ = begin_ + 16;
+    cap_ = begin_ + 16 * 1024;
   }
   catch (...)
   {

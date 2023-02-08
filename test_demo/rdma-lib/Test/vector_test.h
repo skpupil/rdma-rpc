@@ -8,6 +8,13 @@
 #include "../include/vector.h"
 #include "test.h"
 //#include "rdma_connection.h"
+
+#include<iostream>
+#include<thread>
+#include<mutex>
+#include<condition_variable>
+
+
 namespace mystl
 {
 namespace test
@@ -29,9 +36,12 @@ void vector_test()
   std::cout<<v1[0]<<"--------------------konglx test-------------------------"<<std::endl;
   
   v1.push_back(250);
+  v1.push_back(251);
+  v1.push_back(252);
   std::cout<<std::endl;
   std::cout<<v1[0]<<"--------------------konglx test-------------------------"<<std::endl;
   std::cout<<v1[1]<<"--------------------konglx test-------------------------"<<std::endl;
+ 
   /*
   mystl::vector<int> v2(10);
   mystl::vector<int> v3(10, 1);
