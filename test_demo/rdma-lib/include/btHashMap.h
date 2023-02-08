@@ -17,7 +17,17 @@ subject to the following restrictions:
 #ifndef BT_HASH_MAP_H
 #define BT_HASH_MAP_H
 
+#include<unordered_map>
 #include "btAlignedObjectArray.h"
+#include <stdint.h>
+#include <bitset>
+
+#include "slab.h"
+#include "rdma_connection.h"
+
+//#define max_entry 200
+
+using namespace std;
 
 ///very basic hashable string implementation, compatible with btHashMap
 struct btHashString
@@ -222,10 +232,21 @@ class btHashMap
 
 protected:
 	btAlignedObjectArray<int>		m_hashTable;
+	unordered_map<int, uint64_t> ht_addr;
+	bitset<2048> ht_bitmap;
+
 	btAlignedObjectArray<int>		m_next;
+	unordered_map<int, uint64_t> next_addr;
+	bitset<2048> next_bitmap;
 	
 	btAlignedObjectArray<Value>		m_valueArray;
+	unordered_map<int, uint64_t> val_addr;
+	bitset<2048 * 16 * 16> val_bitmap;
 	btAlignedObjectArray<Key>		m_keyArray;
+	unordered_map<int, uint64_t> key_addr;
+	bitset<2048 * 16> key_bitmap;
+	client_connection* conn = nullptr;
+	uint32_t max_entry = 200;
 
 	void	growTables(const Key& /*key*/)
 	{
@@ -240,11 +261,12 @@ protected:
 			m_next.resize(newCapacity);
 
 			int i;
-
+			//ht_bitmap.reset();
 			for (i= 0; i < newCapacity; ++i)
 			{
 				m_hashTable[i] = BT_HASH_NULL;
 			}
+			//next_bitmap.reset();
 			for (i = 0; i < newCapacity; ++i)
 			{
 				m_next[i] = BT_HASH_NULL;
@@ -258,6 +280,9 @@ protected:
 				int	hashValue = m_keyArray[i].getHash() & (m_valueArray.capacity()-1);	// New hash value with new mask
 				m_next[i] = m_hashTable[hashValue];
 				m_hashTable[hashValue] = i;
+				//if()
+				//next_bitmap.set(i, 1);
+				//ht_bitmap.set(hashValue, 1);
 			}
 
 
@@ -265,6 +290,8 @@ protected:
 	}
 
 	public:
+	btHashMap(client_connection* connection, uint32_t en_nu){conn = connection;max_entry = en_nu;}	
+	btHashMap(client_connection* connection){conn = connection;max_entry = 200;}	
 
 	void insert(const Key& key, const Value& value) {
 		int hash = key.getHash() & (m_valueArray.capacity()-1);
@@ -274,6 +301,13 @@ protected:
 		if (index != BT_HASH_NULL)
 		{
 			m_valueArray[index]=value;
+			if(val_bitmap[index] == 0){
+				Slab& slab = Slab::get_instance();
+    				uint64_t st_addr = slab.get_mem(sizeof( Value ));
+				//addr
+				val_addr[index] = st_addr;
+				conn->rdma_write(&value, st_addr, sizeof(Value));		
+			}
 			return;
 		}
 
@@ -281,6 +315,16 @@ protected:
 		int oldCapacity = m_valueArray.capacity();
 		m_valueArray.push_back(value);
 		m_keyArray.push_back(key);
+
+		if(val_bitmap.count() < max_entry) {
+			val_bitmap.set(count, 1);
+		}else{
+			val_bitmap.set(count, 0);
+			Slab& slab = Slab::get_instance();
+    			uint64_t st_addr = slab.get_mem(sizeof( Value ));
+			val_addr[m_valueArray.capacity()-1] = st_addr;
+			conn->rdma_write(&value, st_addr, sizeof(Value));		
+		}
 
 		int newCapacity = m_valueArray.capacity();
 		if (oldCapacity < newCapacity)
@@ -406,7 +450,22 @@ protected:
 		{
 			return NULL;
 		}
-		return &m_valueArray[index];
+		/*
+                        val_bitmap.set(m_valueArray.capacity()-1, 0);
+                        Slab& slab = Slab::get_instance();
+                        uint64_t st_addr = slab.get_mem(sizeof( Value ));
+                        val_addr[m_valueArray.capacity()-1] = st_addr;
+                        conn->rdma_write(&value, st_addr, sizeof(Value));
+		*/
+		if(val_bitmap[index])
+			return &m_valueArray[index];
+		else{
+			Value* value;
+			uint64_t addr = val_addr.at(index);
+                        conn->rdma_read(&value, addr, sizeof(Value));
+			return &m_valueArray[index];
+		}
+
 	}
 
 	Value*	find(const Key& key)
@@ -416,7 +475,15 @@ protected:
 		{
 			return NULL;
 		}
-		return &m_valueArray[index];
+		//return &m_valueArray[index];
+		if(val_bitmap[index])
+			return &m_valueArray[index];
+		else{
+			Value* value;
+			uint64_t addr = val_addr.at(index);
+                        conn->rdma_read(&value, addr, sizeof(Value));
+			return &m_valueArray[index];
+		}
 	}
 
 

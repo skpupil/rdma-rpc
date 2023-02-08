@@ -1,10 +1,13 @@
 #include "btHashMap.h"
 
 #include <stdio.h>
+//#include "rdma_connection.h"
 
 int main()
 {
-	btHashMap<btHashInt, btHashInt> btMap;
+
+	client_connection* conn = new client_connection();	
+	btHashMap<btHashInt, btHashInt> btMap(conn);
 	
 	int k = 1234, v = 5678;
 	btMap.insert(btHashInt(k), btHashInt(v));
