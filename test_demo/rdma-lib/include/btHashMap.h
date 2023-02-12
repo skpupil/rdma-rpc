@@ -322,7 +322,7 @@ protected:
 			val_bitmap.set(count, 0);
 			Slab& slab = Slab::get_instance();
     			uint64_t st_addr = slab.get_mem(sizeof( Value ));
-			val_addr[m_valueArray.capacity()-1] = st_addr;
+			val_addr[m_valueArray.size()-1] = st_addr;
 			conn->rdma_write(&value, st_addr, sizeof(Value));		
 		}
 
@@ -442,7 +442,7 @@ protected:
 	Value* operator[](const Key& key) {
 		return find(key);
 	}
-
+/*
 	const Value*	find(const Key& key) const
 	{
 		int index = findIndex(key);
@@ -450,19 +450,41 @@ protected:
 		{
 			return NULL;
 		}
-		/*
-                        val_bitmap.set(m_valueArray.capacity()-1, 0);
-                        Slab& slab = Slab::get_instance();
-                        uint64_t st_addr = slab.get_mem(sizeof( Value ));
-                        val_addr[m_valueArray.capacity()-1] = st_addr;
-                        conn->rdma_write(&value, st_addr, sizeof(Value));
-		*/
+		
+                //        val_bitmap.set(m_valueArray.capacity()-1, 0);
+                  ///      Slab& slab = Slab::get_instance();
+                     //   uint64_t st_addr = slab.get_mem(sizeof( Value ));
+                       // val_addr[m_valueArray.capacity()-1] = st_addr;
+                       // conn->rdma_write(&value, st_addr, sizeof(Value));
+		
 		if(val_bitmap[index])
 			return &m_valueArray[index];
 		else{
 			Value* value;
 			uint64_t addr = val_addr.at(index);
                         conn->rdma_read(&value, addr, sizeof(Value));
+                        
+			//conn->rdma_read(&value, addr, sizeof(Value));
+			val_bitmap[index] = 1;
+			
+			//val_bitmap.size();//index
+                        Slab& slab = Slab::get_instance();
+                        uint64_t one_addr = slab.get_mem(sizeof( Value ));
+                        
+			for(int i = 0;i < m_valueArray.capacity(); i++ ) {
+				if(val_bitmap.count() < max_entry) break;
+				if(val_bitmap.count() >= max_entry && val_bitmap[i] == 1){
+					val_bitmap[i] = 0;
+					Value* val = &m_valueArray[i];
+					val_addr[i] = (uint64_t)one_addr;
+					//val_addr[99] = 0;
+					//val_addr.insert(unordered_map<int, uint64_t>::value_type(i, one_addr));
+					//val_addr[m_valueArray.capacity()-1] = st_addr;
+                        		conn->rdma_write(val, one_addr, sizeof(Value));		
+					break;	
+				}	
+			}	
+
 			return &m_valueArray[index];
 		}
 
@@ -486,6 +508,58 @@ protected:
 		}
 	}
 
+*/
+        Value*  find(const Key& key)
+        {
+                int index = findIndex(key);
+                if (index == BT_HASH_NULL)
+                {
+                        return NULL;
+                }
+
+		if(val_bitmap[index])
+                        return &m_valueArray[index];
+                else{
+                        Value* value;
+                        uint64_t addr = val_addr.at(index);
+                        conn->rdma_read(&value, addr, sizeof(Value));
+                        
+                        //conn->rdma_read(&value, addr, sizeof(Value));
+                        val_bitmap[index] = 1;
+                        
+                        //val_bitmap.size();//index
+                        Slab& slab = Slab::get_instance();
+                        uint64_t one_addr = slab.get_mem(sizeof( Value ));
+                        
+                        for(int i = 0;i < m_valueArray.capacity(); i++ ) {
+                                if(val_bitmap.count() < max_entry) break;
+                                if(val_bitmap.count() >= max_entry && val_bitmap[i] == 1 && val_addr.count(i)!=0){
+                                        val_bitmap[i] = 0;
+                                        Value* val = &m_valueArray[i];
+                                        val_addr[i] = (uint64_t)one_addr;
+                                        //val_addr[99] = 0;
+                                        //val_addr.insert(unordered_map<int, uint64_t>::value_type(i, one_addr));
+                                        //val_addr[m_valueArray.capacity()-1] = st_addr;
+                                        conn->rdma_write(val, one_addr, sizeof(Value));         
+                                        break;  
+                                }       
+			}
+			return &m_valueArray[index];
+                }
+/*
+
+                //return &m_valueArray[index];
+                if(val_bitmap[index])
+                        return &m_valueArray[index];
+                else{
+                        Value* value;
+                        uint64_t addr = val_addr.at(index);
+                        conn->rdma_read(&value, addr, sizeof(Value));
+                        return &m_valueArray[index];
+                }
+
+*/
+        }
 
 	int	findIndex(const Key& key) const
 	{

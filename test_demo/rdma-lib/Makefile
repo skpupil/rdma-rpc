@@ -5,7 +5,7 @@ LDLIBS=-lrdmacm -libverbs #-lpci -lpthread
 INC = -I./include
 INC += -I./Test
 
-all: bin/client bin/server bin/test_general bin/test_stl bin/test_hash bin/test_rmhash
+all: bin/client bin/server bin/test_general bin/test_stl bin/test_hash bin/test_rmhash bin/test_zipf_hash
 
 OBJS=src/rdma_common.o
 
@@ -24,6 +24,8 @@ bin/test_stl: Test/test.cpp $(libsrc)
 bin/test_hash: app/warmUp.cpp $(libsrc)
 	$(CXX) $^ -o $@ $(CXXFLAGS) $(LDLIBS) $(INC)
 bin/test_rmhash: app/benchmarkII.cpp $(libsrc)
+	$(CXX) $^ -o $@ $(CXXFLAGS) $(LDLIBS) $(INC)
+bin/test_zipf_hash: app/benchmark_zipf.cpp $(libsrc)
 	$(CXX) $^ -o $@ $(CXXFLAGS) $(LDLIBS) $(INC)
 
 
