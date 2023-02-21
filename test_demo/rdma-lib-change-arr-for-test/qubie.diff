@@ -1,0 +1,4 @@
+157c157
+< 	for(long i = 0; i < tests; ++i) {
+---
+> 	for(long i = 0; i < 1000; ++i) {
